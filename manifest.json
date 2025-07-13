@@ -19,7 +19,7 @@
     "web_accessible_resources": [
       {
         "resources": ["config.js"],
-        "matches": ["<all_urls>"]
+        "matches": ["https://neetcode.io/*"]
       }
     ]
 }
