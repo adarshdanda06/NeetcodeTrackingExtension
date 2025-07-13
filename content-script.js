@@ -13,49 +13,46 @@ function addGitHubButtonToDOM(runButton) {
     return button;
 }
 
-function showToast(message, duration = 3000) {
-    // Inject styles only once
+function showToast(message, color, duration = 3000) {
     if (!document.getElementById('toast-style')) {
       const style = document.createElement('style');
       style.id = 'toast-style';
       style.textContent = `
-        .toast {
-          position: fixed;
-          bottom: 24px;
-          right: 24px;
-          background-color: #007bff;
-          color: white;
-          padding: 12px 20px;
-          border-radius: 5px;
-          box-shadow: 0 4px 12px rgba(0, 0, 0, 0.15);
-          font-family: sans-serif;
-          opacity: 0;
-          pointer-events: none;
-          transition: opacity 0.3s ease, transform 0.3s ease;
-          transform: translateY(20px);
-          z-index: 9999;
-        }
-  
-        .toast.show {
-          opacity: 1;
-          pointer-events: auto;
-          transform: translateY(0);
-        }
-      `;
+      .toast {
+        position: fixed;
+        top: 24px;
+        right: 24px;
+        background-color: ${color};
+        color: white;
+        padding: 12px 20px;
+        border-radius: 5px;
+        box-shadow: 0 4px 12px rgba(0, 0, 0, 0.15);
+        font-family: sans-serif;
+        opacity: 0;
+        pointer-events: none;
+        transition: opacity 0.3s ease, transform 0.3s ease;
+        transform: translateY(-20px);
+        z-index: 9999;
+      }
+    
+      .toast.show {
+        opacity: 1;
+        pointer-events: auto;
+        transform: translateY(0);
+      }
+    `;
       document.head.appendChild(style);
     }
   
-    // Create toast element
     const toast = document.createElement('div');
     toast.className = 'toast';
     toast.textContent = message;
+    toast.style.backgroundColor = color;
     document.body.appendChild(toast);
   
-    // Force reflow to trigger transition
     void toast.offsetHeight;
     toast.classList.add('show');
   
-    // Remove after duration
     setTimeout(() => {
       toast.classList.remove('show');
       setTimeout(() => toast.remove(), 300);
@@ -160,7 +157,7 @@ async function addToGitHub() {
             name: config.github.committer_name,
             email: config.github.committer_email
         },
-        content: btoa(code) // need to add the content of the user text here
+        content: btoa(code)
     }
     return uploadToGitHub(pathName, dataToAdd);
 }
@@ -172,13 +169,9 @@ async function main() {
         button.addEventListener('click', async () => {
             const data = await addToGitHub();
             if (data.status === 201) {
-                showToast('Successfully added to GitHub');
-                console.log('Successfully added to GitHub');
-                console.log("Response: ", data.response);
+                showToast('Successfully added to GitHub', "#007bff");
             } else {
-                showToast('Failed to add to GitHub');
-                console.log('Failed to add to GitHub');
-                console.log("Response: ", data.response);
+                showToast('Failed to add to GitHub', '#e74c3c');
             }
         });
 
