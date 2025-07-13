@@ -40,22 +40,15 @@ function getDate() {
     return date.toISOString().split('T')[0];
 }
 
-function getTitle() {
-    
-    const characters = 'ABCDEFGHIJKLMNOPQRSTUVWXYZabcdefghijklmnopqrstuvwxyz0123456789';
-    let result = '';
-    const length = 8; // Length of random string
-    
-    for (let i = 0; i < length; i++) {
-        result += characters.charAt(Math.floor(Math.random() * characters.length));
-    }
-    
+async function getTitle() {
+    const title = await waitForElement('querySelector', 'h1');
+    const result = title.textContent.replaceAll(' ', '_');
     return result;
 }
 
-function addToGitHub() {
+async function addToGitHub() {
     const date = getDate();
-    const title = getTitle();
+    const title = await getTitle();
     const pathName = `${date}/${title}.txt`;
     const dataToAdd = {
         owner: config.github.username,
@@ -82,11 +75,18 @@ function addToGitHub() {
     });
 }
 
+async function getCode() {
+    const code = await waitForElement('querySelector', 'pre');
+    return code.textContent;
+}
+
 async function main() {
     try {
         const runButton = await waitForElement('getElementById', 'run-button');
         const button = addGitHubButtonToDOM(runButton);
-        button.addEventListener('click', addToGitHub);
+        button.addEventListener('click', async () => {
+            await addToGitHub();
+        });
     } catch (error) {
         console.error('Error in main function:', error);
     }
