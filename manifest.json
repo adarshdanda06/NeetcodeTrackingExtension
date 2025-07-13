@@ -4,12 +4,22 @@
     "version": "1.0.0",
     "description": "A Chrome extension to track and write data to GitHub repository",
     "permissions": [
-      "activeTab"
+      "activeTab",
+      "storage"
+    ],
+    "host_permissions": [
+      "https://api.github.com/*"
     ],
     "content_scripts": [
         {
           "matches": ["https://neetcode.io/*"],
-          "js": ["content-script.js"]
+          "js": ["config.js", "content-script.js"]
         }
-      ]
-  }
+    ],
+    "web_accessible_resources": [
+      {
+        "resources": ["config.js"],
+        "matches": ["<all_urls>"]
+      }
+    ]
+}
