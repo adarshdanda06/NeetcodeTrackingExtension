@@ -13,6 +13,56 @@ function addGitHubButtonToDOM(runButton) {
     return button;
 }
 
+function showToast(message, duration = 3000) {
+    // Inject styles only once
+    if (!document.getElementById('toast-style')) {
+      const style = document.createElement('style');
+      style.id = 'toast-style';
+      style.textContent = `
+        .toast {
+          position: fixed;
+          bottom: 24px;
+          right: 24px;
+          background-color: #007bff;
+          color: white;
+          padding: 12px 20px;
+          border-radius: 5px;
+          box-shadow: 0 4px 12px rgba(0, 0, 0, 0.15);
+          font-family: sans-serif;
+          opacity: 0;
+          pointer-events: none;
+          transition: opacity 0.3s ease, transform 0.3s ease;
+          transform: translateY(20px);
+          z-index: 9999;
+        }
+  
+        .toast.show {
+          opacity: 1;
+          pointer-events: auto;
+          transform: translateY(0);
+        }
+      `;
+      document.head.appendChild(style);
+    }
+  
+    // Create toast element
+    const toast = document.createElement('div');
+    toast.className = 'toast';
+    toast.textContent = message;
+    document.body.appendChild(toast);
+  
+    // Force reflow to trigger transition
+    void toast.offsetHeight;
+    toast.classList.add('show');
+  
+    // Remove after duration
+    setTimeout(() => {
+      toast.classList.remove('show');
+      setTimeout(() => toast.remove(), 300);
+    }, duration);
+  }
+  
+
 
 async function waitForElement(getElement, identifier) {
     const targetElement = document[getElement](identifier);
@@ -35,6 +85,28 @@ async function waitForElement(getElement, identifier) {
     });
 }
 
+async function waitForAllElements(selector, identifier) {
+    const elements = document[selector](identifier);
+    if (elements.length > 0) {
+        return Array.from(elements);
+    }
+
+    return new Promise((resolve) => {
+        const observer = new MutationObserver((_, observer) => {
+            const elements = document[selector](identifier);
+            if (elements.length > 0) {
+                observer.disconnect();
+                resolve(Array.from(elements));
+            }
+        });
+
+        observer.observe(document.body, {
+            childList: true,
+            subtree: true
+        });
+    });
+}
+
 function getDate() {
     const date = new Date();
     return date.toISOString().split('T')[0];
@@ -46,7 +118,36 @@ async function getTitle() {
     return result;
 }
 
+async function getCode() {
+    const codeLines = await waitForAllElements('getElementsByClassName', 'view-line');
+    const codeText = Array.from(codeLines).map(line => line.textContent).join('\n');
+    return codeText;
+}
+
+async function uploadToGitHub(pathName, dataToAdd) {
+    const response = await fetch(
+        `https://api.github.com/repos/${config.github.username}/${config.github.repo_name}/contents/${pathName}`,
+        {
+            method: 'PUT',
+            headers: {
+                'Authorization': `Bearer ${config.github.token}`,
+                'X-GitHub-Api-Version': '2022-11-28'
+            },
+            body: JSON.stringify(dataToAdd)
+        }
+    );
+    const data = await response.json();
+    const status = response.status;
+    console.log(data);
+    return {
+        "response": data,
+        "status": status
+    };
+}
+
+
 async function addToGitHub() {
+    const code = await getCode();
     const date = getDate();
     const title = await getTitle();
     const pathName = `${date}/${title}.txt`;
@@ -59,25 +160,9 @@ async function addToGitHub() {
             name: config.github.committer_name,
             email: config.github.committer_email
         },
-        content: btoa('test commit') // need to add the content of the user text here
+        content: btoa(code) // need to add the content of the user text here
     }
-    fetch(`https://api.github.com/repos/${config.github.username}/${config.github.repo_name}/contents/${pathName}`, {
-        method: 'PUT',
-        headers: {
-            'Authorization': `Bearer ${config.github.token}`,
-            'X-GitHub-Api-Version': '2022-11-28'
-        },
-        body: JSON.stringify(dataToAdd)
-    })
-    .then(response => response.json())
-    .then(data => {
-        console.log(data);
-    });
-}
-
-async function getCode() {
-    const code = await waitForElement('querySelector', 'pre');
-    return code.textContent;
+    return uploadToGitHub(pathName, dataToAdd);
 }
 
 async function main() {
@@ -85,8 +170,18 @@ async function main() {
         const runButton = await waitForElement('getElementById', 'run-button');
         const button = addGitHubButtonToDOM(runButton);
         button.addEventListener('click', async () => {
-            await addToGitHub();
+            const data = await addToGitHub();
+            if (data.status === 201) {
+                showToast('Successfully added to GitHub');
+                console.log('Successfully added to GitHub');
+                console.log("Response: ", data.response);
+            } else {
+                showToast('Failed to add to GitHub');
+                console.log('Failed to add to GitHub');
+                console.log("Response: ", data.response);
+            }
         });
+
     } catch (error) {
         console.error('Error in main function:', error);
     }
