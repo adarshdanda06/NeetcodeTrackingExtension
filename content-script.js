@@ -185,13 +185,15 @@ async function addToGitHub() {
             const data = await uploadToGitHub(pathName, dataToAdd);
             return {
                 "response": data,
-                "status": data.status
+                "status": data.status,
+                "updated": true
             }
         } else {
             const data = await uploadToGitHub(pathName, dataToAdd);
             return {
                 "response": data,
-                "status": data.status
+                "status": data.status,
+                "message": "File does not exist"
             };
         }
     } catch (error) {
@@ -217,7 +219,6 @@ function extractMonacoContent() {
     return null;
 }
 
-
 async function main() {
     try {
         const runButton = await waitForElement('getElementById', 'run-button');
@@ -227,7 +228,11 @@ async function main() {
             console.log("Content: ", content);
             const data = await addToGitHub();
             if (data.status === 201 || data.status === 200) {
-                showToast('Successfully added to GitHub', "#007bff");
+                if (data.updated) {
+                    showToast('Successfully updated in GitHub', '#007bff');
+                } else {
+                    showToast('Successfully added to GitHub', "#007bff");
+                }
             } else {
                 showToast('Failed to add to GitHub', '#e74c3c');
             }
