@@ -146,7 +146,6 @@ async function uploadToGitHub(pathName, dataToAdd) {
     );
     const data = await response.json();
     const status = response.status;
-    console.log(data);
     return {
         "response": data,
         "status": status
@@ -182,16 +181,13 @@ async function addToGitHub() {
         }   
         const existingFile = await findExistingFile(dataToFind, pathName);
         if (existingFile.status === 200) {
-            console.log("File already exists");
             dataToAdd.sha = existingFile.response.sha;
             const data = await uploadToGitHub(pathName, dataToAdd);
-            console.log(data);
             return {
                 "response": data,
                 "status": data.status
             }
         } else {
-            console.log("File does not exist");
             const data = await uploadToGitHub(pathName, dataToAdd);
             return {
                 "response": data,
@@ -207,14 +203,29 @@ async function addToGitHub() {
     }
 }
 
+function extractMonacoContent() {
+    // Try to get Monaco editor instance
+    if (window.monaco && window.monaco.editor) {
+      const models = window.monaco.editor.getModels();
+      if (models.length > 0) {
+        // Get the first model (usually the main editor)
+        const content = models[0].getValue();
+        console.log('Monaco content:', content);
+        return content;
+      }
+    }
+    return null;
+}
+
+
 async function main() {
     try {
         const runButton = await waitForElement('getElementById', 'run-button');
         const button = addGitHubButtonToDOM(runButton);
         button.addEventListener('click', async () => {
+            const content = extractMonacoContent();
+            console.log("Content: ", content);
             const data = await addToGitHub();
-            console.log(data);
-            console.log(data.status);
             if (data.status === 201 || data.status === 200) {
                 showToast('Successfully added to GitHub', "#007bff");
             } else {
