@@ -210,26 +210,13 @@ async function addToGitHub() {
     }
 }
 
-function extractMonacoContent() {
-    // Try to get Monaco editor instance
-    if (window.monaco && window.monaco.editor) {
-      const models = window.monaco.editor.getModels();
-      if (models.length > 0) {
-        // Get the first model (usually the main editor)
-        const content = models[0].getValue();
-        console.log('Monaco content:', content);
-        return content;
-      }
-    }
-    return null;
-}
+
 
 async function main() {
     try {
         const runButton = await waitForElement('getElementById', 'run-button');
         const button = addGitHubButtonToDOM(runButton);
         button.addEventListener('click', async () => {
-            const content = extractMonacoContent();
             console.log("Content: ", content);
             const data = await addToGitHub();
             if (data.status === 201 || data.status === 200) {
