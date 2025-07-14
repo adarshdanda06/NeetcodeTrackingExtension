@@ -121,6 +121,17 @@ async function getCode() {
     return codeText;
 }
 
+async function findExistingFile(dataToFind, pathName) {
+    const response = await fetch(
+        `https://api.github.com/repos/${config.github.username}/${config.github.repo_name}/contents/${pathName}`, dataToFind
+    );
+    const data = await response.json();
+    return {
+        "response": data,
+        "status": response.status
+    };
+}
+
 async function uploadToGitHub(pathName, dataToAdd) {
     const response = await fetch(
         `https://api.github.com/repos/${config.github.username}/${config.github.repo_name}/contents/${pathName}`,
@@ -144,22 +155,56 @@ async function uploadToGitHub(pathName, dataToAdd) {
 
 
 async function addToGitHub() {
-    const code = await getCode();
-    const date = getDate();
-    const title = await getTitle();
-    const pathName = `${date}/${title}.txt`;
-    const dataToAdd = {
-        owner: config.github.username,
-        repo: config.github.repo_name,
-        path: 'PATH',
-        message: `Completed ${title} on ${date}`,
-        committer: {
-            name: config.github.committer_name,
-            email: config.github.committer_email
-        },
-        content: btoa(code)
+    try {
+        const code = await getCode();
+        const date = getDate();
+        const title = await getTitle();
+        const pathName = `${date}/${title}.txt`;
+        const dataToAdd = {
+            owner: config.github.username,
+            repo: config.github.repo_name,
+            path: 'PATH',
+            message: `Completed ${title} on ${date}`,
+            committer: {
+                name: config.github.committer_name,
+                email: config.github.committer_email
+            },
+            content: btoa(code)
+        }
+        const dataToFind = {
+            owner: config.github.username,
+            repo: config.github.repo_name,
+            path: 'PATH',
+            headers: {
+                'Authorization': `Bearer ${config.github.token}`,
+                'X-GitHub-Api-Version': '2022-11-28'
+            }
+        }   
+        const existingFile = await findExistingFile(dataToFind, pathName);
+        if (existingFile.status === 200) {
+            console.log("File already exists");
+            dataToAdd.sha = existingFile.response.sha;
+            const data = await uploadToGitHub(pathName, dataToAdd);
+            console.log(data);
+            return {
+                "response": data,
+                "status": data.status
+            }
+        } else {
+            console.log("File does not exist");
+            const data = await uploadToGitHub(pathName, dataToAdd);
+            return {
+                "response": data,
+                "status": data.status
+            };
+        }
+    } catch (error) {
+        console.error('Error in addToGitHub function:', error);
+        return {
+            "response": error,
+            "status": 500
+        };
     }
-    return uploadToGitHub(pathName, dataToAdd);
 }
 
 async function main() {
@@ -168,7 +213,9 @@ async function main() {
         const button = addGitHubButtonToDOM(runButton);
         button.addEventListener('click', async () => {
             const data = await addToGitHub();
-            if (data.status === 201) {
+            console.log(data);
+            console.log(data.status);
+            if (data.status === 201 || data.status === 200) {
                 showToast('Successfully added to GitHub', "#007bff");
             } else {
                 showToast('Failed to add to GitHub', '#e74c3c');
