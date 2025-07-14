@@ -117,7 +117,12 @@ async function getTitle() {
 
 async function getCode() {
     const codeLines = await waitForAllElements('getElementsByClassName', 'view-line');
-    const codeText = Array.from(codeLines).map(line => line.textContent).join('\n');
+    const sortedLines = codeLines.sort((a, b) => {
+        const topA = parseInt(a.style.top, 10) || 0;
+        const topB = parseInt(b.style.top, 10) || 0;
+        return topA - topB;
+    });
+    const codeText = sortedLines.map(line => line.textContent).join('\n');
     return codeText;
 }
 
