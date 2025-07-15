@@ -1,66 +1,3 @@
-function addGitHubButtonToDOM(runButton) {
-    const button = document.createElement('button');
-    button.textContent = 'Add to GitHub';
-    button.setAttribute('type', 'button');
-    button.style.marginRight = '12px';
-    button.style.backgroundColor = '#007bff';
-    button.style.color = '#fff';
-    button.style.border = 'none';
-    button.style.padding = '8px 20px';
-    button.style.borderRadius = '5px';
-    button.style.cursor = 'pointer';
-    runButton.parentElement.insertBefore(button, runButton);
-    return button;
-}
-
-function showToast(message, color, duration = 3000) {
-    if (!document.getElementById('toast-style')) {
-      const style = document.createElement('style');
-      style.id = 'toast-style';
-      style.textContent = `
-      .toast {
-        position: fixed;
-        top: 24px;
-        right: 24px;
-        background-color: ${color};
-        color: white;
-        padding: 12px 20px;
-        border-radius: 5px;
-        box-shadow: 0 4px 12px rgba(0, 0, 0, 0.15);
-        font-family: sans-serif;
-        opacity: 0;
-        pointer-events: none;
-        transition: opacity 0.3s ease, transform 0.3s ease;
-        transform: translateY(-20px);
-        z-index: 9999;
-      }
-    
-      .toast.show {
-        opacity: 1;
-        pointer-events: auto;
-        transform: translateY(0);
-      }
-    `;
-      document.head.appendChild(style);
-    }
-  
-    const toast = document.createElement('div');
-    toast.className = 'toast';
-    toast.textContent = message;
-    toast.style.backgroundColor = color;
-    document.body.appendChild(toast);
-  
-    void toast.offsetHeight;
-    toast.classList.add('show');
-  
-    setTimeout(() => {
-      toast.classList.remove('show');
-      setTimeout(() => toast.remove(), 300);
-    }, duration);
-  }
-  
-
-
 async function waitForElement(getElement, identifier) {
     const targetElement = document[getElement](identifier);
     if (targetElement) {
@@ -109,22 +46,53 @@ function getDate() {
     return date.toISOString().split('T')[0];
 }
 
-async function getTitle() {
-    const title = await waitForElement('querySelector', 'h1');
-    const result = title.textContent.replaceAll(' ', '_');
-    return result;
-}
 
-async function getCode() {
-    const codeLines = await waitForAllElements('getElementsByClassName', 'view-line');
-    const sortedLines = codeLines.sort((a, b) => {
-        const topA = parseInt(a.style.top, 10) || 0;
-        const topB = parseInt(b.style.top, 10) || 0;
-        return topA - topB;
-    });
-    const codeText = sortedLines.map(line => line.textContent).join('\n');
-    return codeText;
-}
+function showToast(message, color, duration = 3000) {
+    if (!document.getElementById('toast-style')) {
+      const style = document.createElement('style');
+      style.id = 'toast-style';
+      style.textContent = `
+      .toast {
+        position: fixed;
+        top: 24px;
+        right: 24px;
+        background-color: ${color};
+        color: white;
+        padding: 12px 20px;
+        border-radius: 5px;
+        box-shadow: 0 4px 12px rgba(0, 0, 0, 0.15);
+        font-family: sans-serif;
+        opacity: 0;
+        pointer-events: none;
+        transition: opacity 0.3s ease, transform 0.3s ease;
+        transform: translateY(-20px);
+        z-index: 9999;
+      }
+    
+      .toast.show {
+        opacity: 1;
+        pointer-events: auto;
+        transform: translateY(0);
+      }
+    `;
+      document.head.appendChild(style);
+    }
+  
+    const toast = document.createElement('div');
+    toast.className = 'toast';
+    toast.textContent = message;
+    toast.style.backgroundColor = color;
+    document.body.appendChild(toast);
+  
+    void toast.offsetHeight;
+    toast.classList.add('show');
+  
+    setTimeout(() => {
+      toast.classList.remove('show');
+      setTimeout(() => toast.remove(), 300);
+    }, duration);
+  }
+
 
 async function findExistingFile(dataToFind, pathName) {
     const response = await fetch(
@@ -157,18 +125,15 @@ async function uploadToGitHub(pathName, dataToAdd) {
     };
 }
 
-
-async function addToGitHub() {
+async function addToGitHub(code, title) {
     try {
-        const code = await getCode();
         const date = getDate();
-        const title = await getTitle();
         const pathName = `${date}/${title}.txt`;
         const dataToAdd = {
             owner: config.github.username,
             repo: config.github.repo_name,
             path: 'PATH',
-            message: `Completed ${title} on ${date}`,
+            message: `Added ${title} on ${date}`,
             committer: {
                 name: config.github.committer_name,
                 email: config.github.committer_email
@@ -210,17 +175,12 @@ async function addToGitHub() {
     }
 }
 
-
-
-async function main() {
-    try {
-        const runButton = await waitForElement('getElementById', 'run-button');
-        const button = addGitHubButtonToDOM(runButton);
-        button.addEventListener('click', async () => {
-            console.log("Content: ", content);
-            const data = await addToGitHub();
+chrome.runtime.onMessage.addListener((message, sender, sendResponse) => {
+    if (message.type === 'CODE_DATA' && message.code && message.title) {
+        addToGitHub(message.code, message.title).then((data) => {
             if (data.status === 201 || data.status === 200) {
                 if (data.updated) {
+                    console.log('Successfully updated in GitHub: ', data);
                     showToast('Successfully updated in GitHub', '#007bff');
                 } else {
                     showToast('Successfully added to GitHub', "#007bff");
@@ -229,10 +189,5 @@ async function main() {
                 showToast('Failed to add to GitHub', '#e74c3c');
             }
         });
-
-    } catch (error) {
-        console.error('Error in main function:', error);
     }
-};
-
-main();
+});
