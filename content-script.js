@@ -166,8 +166,24 @@ async function uploadToGitHub(pathName, dataToAdd) {
     };
 }
 
-async function addCodeToGitHub(code, title, questionContent) {
-    await addToGithub(code, title, "solution", "py");
+
+function getLanguage(language) {
+    if (language === "Python") {
+        return "py";
+    } else if (language === "Java") {
+        return "java";
+    } else if (language === "C++") {
+        return "cpp";
+    } else if (language === "C#") {
+        return "c";
+    } else if (language === "JavaScript") {
+        return "js";
+    }
+    return "py";
+}
+
+async function addCodeToGitHub(code, title, questionContent, language) {
+    await addToGithub(code, title, "solution", getLanguage(language));
     return await addToGithub(questionContent, title, "problem", "md");
 }
 
@@ -337,14 +353,13 @@ chrome.runtime.onMessage.addListener(async (message, sender, sendResponse) => {
             const questionTitle = await waitForElement('querySelector', 'h1');
             const articleComponent = await waitForElement('querySelector', 'div.my-article-component-container');
             const markdownContent = formatArticleComponent(questionTitle.textContent, articleComponent);
-            // const language = await waitForElement('querySelector', 'div.selected-language');
-
+            const language = await waitForElement('querySelector', '.selected-language');
             console.log('________________________________________________________');
             console.log("questionTitle: ", questionTitle.textContent);
             console.log("Markdown Content: ", markdownContent);
-            // console.log("Language: ", language);
+            console.log("Language: ", language.textContent);
 
-            addCodeToGitHub(message.code, message.title, markdownContent).then((data) => {
+            addCodeToGitHub(message.code, message.title, markdownContent, language.textContent).then((data) => {
                 if (data.status === 201 || data.status === 200) {
                     if (data.updated) {
                         console.log('Successfully updated in GitHub: ', data);
