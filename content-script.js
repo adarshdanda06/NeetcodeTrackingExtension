@@ -19,69 +19,6 @@ async function waitForElement(getElement, identifier) {
     });
 }
 
-async function waitForNestedComponent(element, selector, identifier) {
-    const nestedElement = element[selector](identifier);
-    if (nestedElement) {
-        return nestedElement;
-    }
-    return new Promise((resolve) => {
-        const observer = new MutationObserver((_, observer) => {
-            const element = document[getElement](identifier);
-            if (element) {
-                observer.disconnect();
-                resolve(element);
-            }
-        });
-        observer.observe(document.body, {
-            childList: true,
-            subtree: true
-        });
-    });
-}
-
-
-async function waitForNestedComponents(element, selector, identifier) {
-    const nestedElement = element[selector](identifier);
-    if (nestedElement) {
-        return nestedElement;
-    }
-    return new Promise((resolve) => {
-        const observer = new MutationObserver((_, observer) => {
-            const elements = document[selector](identifier);
-            if (elements.length > 0) {
-                observer.disconnect();
-                resolve(Array.from(elements));
-            }
-        });
-        observer.observe(document.body, {
-            childList: true,
-            subtree: true
-        });
-    });
-}
-
-async function waitForAllElements(selector, identifier) {
-    const elements = document[selector](identifier);
-    if (elements.length > 0) {
-        return Array.from(elements);
-    }
-
-    return new Promise((resolve) => {
-        const observer = new MutationObserver((_, observer) => {
-            const elements = document[selector](identifier);
-            if (elements.length > 0) {
-                observer.disconnect();
-                resolve(Array.from(elements));
-            }
-        });
-
-        observer.observe(document.body, {
-            childList: true,
-            subtree: true
-        });
-    });
-}
-
 function getDate() {
     const date = new Date();
     return date.toISOString().split('T')[0];
@@ -182,9 +119,20 @@ function getLanguage(language) {
     return "py";
 }
 
-async function addCodeToGitHub(code, title, questionContent, language) {
-    await addToGithub(code, title, "solution", getLanguage(language));
-    return await addToGithub(questionContent, title, "problem", "md");
+async function addContentToGitHub(code, questionTitle, questionContent, language) {
+    const title = questionTitle.replace(' ', '-').toLowerCase().trim();
+    const solutionAdded = await addToGithub(code, title, "solution", getLanguage(language));
+    const problemAdded = await addToGithub(questionContent, title, "problem", "md");
+
+    if (solutionAdded.status !== 201 && solutionAdded.status !== 200) {
+        return solutionAdded;
+    }
+
+    if (problemAdded.status !== 201 && problemAdded.status !== 200) {
+        return problemAdded;
+    }
+
+    return problemAdded;
 }
 
 async function addToGithub(content, title, contentType, fileType) {
@@ -353,13 +301,13 @@ chrome.runtime.onMessage.addListener(async (message, sender, sendResponse) => {
             const questionTitle = await waitForElement('querySelector', 'h1');
             const articleComponent = await waitForElement('querySelector', 'div.my-article-component-container');
             const markdownContent = formatArticleComponent(questionTitle.textContent, articleComponent);
-            const language = await waitForElement('querySelector', '.selected-language');
+            const languageElement = await waitForElement('querySelector', '.selected-language');
             console.log('________________________________________________________');
             console.log("questionTitle: ", questionTitle.textContent);
             console.log("Markdown Content: ", markdownContent);
-            console.log("Language: ", language.textContent);
+            console.log("Language: ", languageElement.textContent);
 
-            addCodeToGitHub(message.code, message.title, markdownContent, language.textContent).then((data) => {
+            addContentToGitHub(message.code, questionTitle.textContent, markdownContent, languageElement.textContent).then((data) => {
                 if (data.status === 201 || data.status === 200) {
                     if (data.updated) {
                         console.log('Successfully updated in GitHub: ', data);
