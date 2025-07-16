@@ -120,7 +120,7 @@ function getLanguage(language) {
 }
 
 async function addContentToGitHub(code, questionTitle, questionContent, language) {
-    const title = questionTitle.replace(' ', '-').toLowerCase().trim();
+    const title = questionTitle.replaceAll(' ', '-').toLowerCase().trim();
     const solutionAdded = await addToGithub(code, title, "solution", getLanguage(language));
     const problemAdded = await addToGithub(questionContent, title, "problem", "md");
 
@@ -148,7 +148,7 @@ async function addToGithub(content, title, contentType, fileType) {
                 name: config.github.committer_name,
                 email: config.github.committer_email
             },
-            content: btoa(content)
+            content: btoa(String.fromCharCode(...new TextEncoder().encode(content)))
         }
         const dataToFind = {
             owner: config.github.username,
