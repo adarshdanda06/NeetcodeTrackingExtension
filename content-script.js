@@ -177,7 +177,6 @@ async function addToGithub(content, title, contentType, fileType) {
             };
         }
     } catch (error) {
-        console.error('Error in addToGitHub function:', error);
         return {
             "response": error,
             "status": 500
@@ -302,25 +301,17 @@ chrome.runtime.onMessage.addListener(async (message, sender, sendResponse) => {
             const articleComponent = await waitForElement('querySelector', 'div.my-article-component-container');
             const markdownContent = formatArticleComponent(questionTitle.textContent, articleComponent);
             const languageElement = await waitForElement('querySelector', '.selected-language');
-            console.log('________________________________________________________');
-            console.log("questionTitle: ", questionTitle.textContent);
-            console.log("Markdown Content: ", markdownContent);
-            console.log("Language: ", languageElement.textContent);
 
-            addContentToGitHub(message.code, questionTitle.textContent, markdownContent, languageElement.textContent).then((data) => {
-                if (data.status === 201 || data.status === 200) {
-                    if (data.updated) {
-                        console.log('Successfully updated in GitHub: ', data);
-                        showToast('Successfully updated in GitHub', '#007bff');
-                    } else {
-                        showToast('Successfully added to GitHub', "#007bff");
-                    }
-                } else {
-                    showToast('Failed to add to GitHub', '#e74c3c');
-                }
-            });
+            const title = questionTitle.textContent.replaceAll(' ', '-').toLowerCase().trim();
+            const conentAdded = await addContentToGitHub(message.code, title, markdownContent, languageElement.textContent);
+            if (conentAdded.status === 201 || conentAdded.status === 200) {
+                const message = conentAdded.updated ? 'Successfully updated in GitHub' : 'Successfully added to GitHub';
+                showToast(message, '#007bff');
+            } else {
+                showToast('Failed to add to GitHub', '#e74c3c');
+            }
         } catch (error) {
-            console.log('Error in onMessage listener:', error);
+            showToast('Failed to add to GitHub', '#e74c3c');
         }
     }
 });
