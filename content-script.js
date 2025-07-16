@@ -166,10 +166,15 @@ async function uploadToGitHub(pathName, dataToAdd) {
     };
 }
 
-async function addToGitHub(code, title) {
+async function addCodeToGitHub(code, title, questionContent) {
+    await addToGithub(code, title, "solution", "py");
+    return await addToGithub(questionContent, title, "problem", "md");
+}
+
+async function addToGithub(content, title, contentType, fileType) {
     try {
         const date = getDate();
-        const pathName = `${date}/${title}.txt`;
+        const pathName = `${date}/${title}/${contentType}.${fileType}`;
         const dataToAdd = {
             owner: config.github.username,
             repo: config.github.repo_name,
@@ -179,7 +184,7 @@ async function addToGitHub(code, title) {
                 name: config.github.committer_name,
                 email: config.github.committer_email
             },
-            content: btoa(code)
+            content: btoa(content)
         }
         const dataToFind = {
             owner: config.github.username,
@@ -216,10 +221,10 @@ async function addToGitHub(code, title) {
     }
 }
 
-async function formatArticleComponent(articleComponent) {
+function formatArticleComponent(title, articleComponent) {
     if (!articleComponent) return '';
     
-    let markdown = '';
+    let markdown = `# **${title}**\n\n`;
     
     function processNode(node) {
         if (node.nodeType === Node.TEXT_NODE) {
@@ -331,16 +336,15 @@ chrome.runtime.onMessage.addListener(async (message, sender, sendResponse) => {
         try {
             const questionTitle = await waitForElement('querySelector', 'h1');
             const articleComponent = await waitForElement('querySelector', 'div.my-article-component-container');
-            
-            const markdownContent = await formatArticleComponent(articleComponent);
-            
+            const markdownContent = formatArticleComponent(questionTitle.textContent, articleComponent);
+            // const language = await waitForElement('querySelector', 'div.selected-language');
+
             console.log('________________________________________________________');
             console.log("questionTitle: ", questionTitle.textContent);
             console.log("Markdown Content: ", markdownContent);
-            
-            const fullContent = `# ${questionTitle.textContent}\n\n## Problem Description\n\n${markdownContent}\n\n## Solution\n\n\`\`\`\n${message.code}\n\`\`\``;
-            
-            addToGitHub(fullContent, message.title).then((data) => {
+            // console.log("Language: ", language);
+
+            addCodeToGitHub(message.code, message.title, markdownContent).then((data) => {
                 if (data.status === 201 || data.status === 200) {
                     if (data.updated) {
                         console.log('Successfully updated in GitHub: ', data);
