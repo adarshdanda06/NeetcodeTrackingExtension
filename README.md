@@ -15,11 +15,23 @@ A Chrome extension that automatically captures your NeetCode solutions and probl
 ### 1. Clone or Download the Extension
 
 ```bash
-git clone <repository-url>
+git clone https://github.com/adarshdanda06/NeetcodeTrackingExtension
 cd NeetcodeTrackingExtension
 ```
 
-### 2. Create Configuration File
+### 2. Create a GitHub Repository
+
+Create a new GitHub repository where you want to track your NeetCode progress:
+
+1. Go to [GitHub](https://github.com) and sign in
+2. Click the "+" icon in the top right corner
+3. Select "New repository"
+4. Name your repository (e.g., "neetcode-solutions" or "coding-progress")
+5. Choose public or private (your preference)
+6. Click "Create repository"
+7. **Note down the repository name** - you'll need it for the config file
+
+### 3. Create Configuration File
 
 **IMPORTANT**: You need to create a `config.js` file in the root directory with your GitHub credentials.
 
@@ -39,13 +51,15 @@ const config = {
 
 #### How to Get GitHub Personal Access Token:
 
-1. Go to GitHub Settings → Developer settings → Personal access tokens → Tokens (classic)
-2. Click "Generate new token (classic)"
-3. Give it a name like "Neetcode Extension"
-4. Select scopes: `repo` (for private repos) or `public_repo` (for public repos)
-5. Copy the generated token and paste it in your `config.js`
+1. Go to GitHub Settings → Developer settings → Personal access tokens → Fine-grained tokens
+2. Click "Generate new token"
+3. Give it a name like "Neetcode_Extension_Token"
+4. Go to Repository Access: `Only select repositories` and select the repository you created
+5. Go to the Repository select and select Repository Permissions. You will drop down. Scroll to the Contents section and select the `Access` dropdown. Click `Read and write`. 
+7. Click `Generate Token`
+6. Copy the generated token and paste it in your `config.js`
 
-### 3. Load Extension in Chrome
+### 4. Load Extension in Chrome
 
 1. Open Chrome and go to `chrome://extensions/`
 2. Enable "Developer mode" (toggle in top right)

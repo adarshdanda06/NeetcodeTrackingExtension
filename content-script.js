@@ -69,7 +69,7 @@ function showToast(message, color, duration = 3000) {
       toast.classList.remove('show');
       setTimeout(() => toast.remove(), 300);
     }, duration);
-  }
+}
 
 
 async function findExistingFile(dataToFind, pathName) {
