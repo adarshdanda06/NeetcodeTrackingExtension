@@ -19,6 +19,47 @@ async function waitForElement(getElement, identifier) {
     });
 }
 
+async function waitForNestedComponent(element, selector, identifier) {
+    const nestedElement = element[selector](identifier);
+    if (nestedElement) {
+        return nestedElement;
+    }
+    return new Promise((resolve) => {
+        const observer = new MutationObserver((_, observer) => {
+            const element = document[getElement](identifier);
+            if (element) {
+                observer.disconnect();
+                resolve(element);
+            }
+        });
+        observer.observe(document.body, {
+            childList: true,
+            subtree: true
+        });
+    });
+}
+
+
+async function waitForNestedComponents(element, selector, identifier) {
+    const nestedElement = element[selector](identifier);
+    if (nestedElement) {
+        return nestedElement;
+    }
+    return new Promise((resolve) => {
+        const observer = new MutationObserver((_, observer) => {
+            const elements = document[selector](identifier);
+            if (elements.length > 0) {
+                observer.disconnect();
+                resolve(Array.from(elements));
+            }
+        });
+        observer.observe(document.body, {
+            childList: true,
+            subtree: true
+        });
+    });
+}
+
 async function waitForAllElements(selector, identifier) {
     const elements = document[selector](identifier);
     if (elements.length > 0) {
@@ -175,19 +216,144 @@ async function addToGitHub(code, title) {
     }
 }
 
-chrome.runtime.onMessage.addListener((message, sender, sendResponse) => {
-    if (message.type === 'CODE_DATA' && message.code && message.title) {
-        addToGitHub(message.code, message.title).then((data) => {
-            if (data.status === 201 || data.status === 200) {
-                if (data.updated) {
-                    console.log('Successfully updated in GitHub: ', data);
-                    showToast('Successfully updated in GitHub', '#007bff');
-                } else {
-                    showToast('Successfully added to GitHub', "#007bff");
-                }
-            } else {
-                showToast('Failed to add to GitHub', '#e74c3c');
+async function formatArticleComponent(articleComponent) {
+    if (!articleComponent) return '';
+    
+    let markdown = '';
+    
+    function processNode(node) {
+        if (node.nodeType === Node.TEXT_NODE) {
+            return node.textContent.trim();
+        }
+        
+        if (node.nodeType === Node.ELEMENT_NODE) {
+            const tagName = node.tagName.toLowerCase();
+            const textContent = node.textContent.trim();
+            
+            switch (tagName) {
+                case 'p':
+                    if (textContent) {
+                        return textContent + '\n\n';
+                    }
+                    break;
+                    
+                case 'div':
+                    if (node.classList.contains('code-toolbar')) {
+                        const codeElement = node.querySelector('code');
+                        if (codeElement) {
+                            return '```\n' + codeElement.textContent + '\n```\n\n';
+                        }
+                    }
+                    let divContent = '';
+                    for (const child of node.childNodes) {
+                        divContent += processNode(child);
+                    }
+                    return divContent;
+                    
+                case 'ul':
+                    let ulContent = '';
+                    const listItems = node.querySelectorAll('li');
+                    for (const li of listItems) {
+                        ulContent += '- ' + li.textContent.trim() + '\n';
+                    }
+                    return ulContent + '\n';
+                    
+                case 'ol':
+                    let olContent = '';
+                    const orderedItems = node.querySelectorAll('li');
+                    for (let i = 0; i < orderedItems.length; i++) {
+                        olContent += (i + 1) + '. ' + orderedItems[i].textContent.trim() + '\n';
+                    }
+                    return olContent + '\n';
+                    
+                case 'details':
+                    if (node.classList.contains('hint-accordion')) {
+                        const summary = node.querySelector('summary');
+                        const content = node.querySelector('div') || node.querySelector('p');
+                        if (summary && content) {
+                            return '### ' + summary.textContent.trim() + '\n\n' + 
+                                   content.textContent.trim() + '\n\n';
+                        }
+                    }
+                    break;
+                    
+                case 'br':
+                    return '\n';
+                    
+                case 'strong':
+                case 'b':
+                    return '**' + textContent + '**';
+                    
+                case 'em':
+                case 'i':
+                    return '*' + textContent + '*';
+                    
+                case 'code':
+                    if (node.parentElement && node.parentElement.classList.contains('code-toolbar')) {
+                        return '```\n' + textContent + '\n```\n\n';
+                    }
+                    return '`' + textContent + '`';
+                    
+                case 'pre':
+                    return '```\n' + textContent + '\n```\n\n';
+                    
+                case 'h1':
+                case 'h2':
+                case 'h3':
+                case 'h4':
+                case 'h5':
+                case 'h6':
+                    const level = parseInt(tagName.charAt(1));
+                    const prefix = '#'.repeat(level);
+                    return prefix + ' ' + textContent + '\n\n';
+                    
+                default:
+                    let content = '';
+                    for (const child of node.childNodes) {
+                        content += processNode(child);
+                    }
+                    return content;
             }
-        });
+        }
+        
+        return '';
+    }
+    
+    for (const child of articleComponent.childNodes) {
+        markdown += processNode(child);
+    }
+    
+    return markdown.trim();
+}
+
+chrome.runtime.onMessage.addListener(async (message, sender, sendResponse) => {
+    if (message.type === 'CODE_DATA' && message.code && message.title) {
+        try {
+            const questionTitle = await waitForElement('querySelector', 'h1');
+            const articleComponent = await waitForElement('querySelector', 'div.my-article-component-container');
+            
+            const markdownContent = await formatArticleComponent(articleComponent);
+            
+            console.log('________________________________________________________');
+            console.log("questionTitle: ", questionTitle.textContent);
+            console.log("Markdown Content: ", markdownContent);
+            
+            const fullContent = `# ${questionTitle.textContent}\n\n## Problem Description\n\n${markdownContent}\n\n## Solution\n\n\`\`\`\n${message.code}\n\`\`\``;
+            
+            addToGitHub(fullContent, message.title).then((data) => {
+                if (data.status === 201 || data.status === 200) {
+                    if (data.updated) {
+                        console.log('Successfully updated in GitHub: ', data);
+                        showToast('Successfully updated in GitHub', '#007bff');
+                    } else {
+                        showToast('Successfully added to GitHub', "#007bff");
+                    }
+                } else {
+                    showToast('Failed to add to GitHub', '#e74c3c');
+                }
+            });
+        } catch (error) {
+            console.log('Error in onMessage listener:', error);
+        }
     }
 });
