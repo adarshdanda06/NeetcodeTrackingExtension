@@ -3,6 +3,12 @@
     "name": "Neetcode Tracking Extension",
     "version": "1.0.0",
     "description": "A Chrome extension to track and write your Neetcode solutions to GitHub repository",
+    "icons": {
+        "16": "icon.png",
+        "32": "icon.png",
+        "48": "icon.png",
+        "128": "icon.png"
+    },
     "permissions": [
       "activeTab",
       "storage",
