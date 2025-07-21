@@ -1,6 +1,5 @@
-chrome.webRequest.onBeforeRequest.addListener(
-    function(details) {
-      if (details.url.includes("https://us-central1-neetcode-dd170.cloudfunctions.net/runCodeFunction") || details.url.includes("https://us-central1-neetcode-dd170.cloudfunctions.net/executeCodeFunction")) {
+chrome.webRequest.onBeforeRequest.addListener((details) => {
+      if (details.url.includes("https://us-central1-neetcode-dd170.cloudfunctions.net/executeCodeFunction")) {
         const requestBody = details.requestBody;
         const buffer = requestBody.raw[0].bytes;
         const uint8Array = new Uint8Array(buffer);
